@@ -3,7 +3,8 @@ require 'aws-sdk-ses'
 require 'json'
 require 'logger'
 
-FORWARD_TO = ENV['FORWARD_TO']
+MAIL_FROM = ENV['MAIL_FROM']
+MAIL_TO = ENV['MAIL_TO']
 
 def lambda_handler(event:, context:)
   logger = Logger.new(STDOUT)
@@ -13,15 +14,21 @@ def lambda_handler(event:, context:)
   s3 = Aws::S3::Client.new
   response = s3.get_object(
     bucket: event['Records'][0]['s3']['bucket']['name'],
-    key: event['Records'][0]['s3']['object']['key'],
+    key: event['Records'][0]['s3']['object']['key']
   )
   raw = response['body'].read()
+  data = []
+  raw.split(/\r\n/).each do |line|
+    email = line[/[\w+\-.]+@[a-z\d\-.]+\.[a-z]+/i, 0]
+    line.sub!(email, MAIL_FROM) if !email.nil?
+    data.push(line)
+  end
 
   ses = Aws::SES::Client.new
   ses.send_raw_email(
-    source: FORWARD_TO,
-    destinations: [ FORWARD_TO ],
-    raw_message: { data: raw }
+    source: MAIL_FROM,
+    destinations: [ MAIL_TO ],
+    raw_message: { data: data.join("\r\n") }
   )
 end
 
