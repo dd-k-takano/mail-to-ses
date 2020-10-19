@@ -1,4 +1,5 @@
-require 'aws-sdk'
+require 'aws-sdk-s3'
+require 'aws-sdk-ses'
 require 'json'
 require 'logger'
 
